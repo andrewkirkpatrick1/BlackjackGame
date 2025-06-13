@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang = "en-US">
+    <head>
+        <title>Blackjack</title>
+        <meta charset="UTF-8">
+        <meta name = "author" content = "Andrew Kirkpatrick">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel = "icon" type="image/x-icon" href = "red-spade-favicon.png">
+        <link rel = "stylesheet" href = "styles.css">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Diplomata+SC&display=swap" rel="stylesheet">
+    </head>
+    <body>
+        <!-- Background -->
+        <div class = "chip-background" id = "chip-background"></div>
+
+        <!-- Title -->
+       <div class = "title-container" id = "title-container">
+            <h1 class = "title" id = "title">Blackjack</h1>
+            <div class = "card-stream" id = "card-stream"></div>
+            <button class = "start-button" id = "start-button">Start Game</button>
+        </div>
+
+        <!-- Betting -->
+         <div class = "betting-overlay" id = "betting-overlay">
+            <div class = "betting-container" id = "betting-container">
+                <h2>Place Your Bet:</h2>
+                <div class = "current-money">
+                    Your Money: $<span class = "player-money" id = "player-money"></span>
+                </div>
+                <div class = "bet-input-container">
+                    <label for = "bet-amount">Bet Amount:</label>
+                    <input type="number" id = "bet-amount" min = '10' value="0">
+                </div>
+                <div class = "betting-controls">
+                    <button id = "place-bet-button" class = "betting-button">Place Bet</button>
+                    <button id = "max-bet-button" class = "betting-button">Max Bet</button>
+                    <button id = "half-bet-button" class = "betting-button">Half Bet</button>
+                    <button id = "clear-bet-button" class = "betting-button">Clear Bet</button>
+                </div>
+                <div id = "bet-message" class = "bet-message"></div>
+            </div>
+         </div>
+
+        <!-- Game container -->
+        <div class = "game-container" id = "game-container">
+            <div class = "end-game-message" id = "end-game-message"></div>
+            <!-- Dealer hand display -->
+            <div class = "hand">
+                <h2 class = "dealer-title">Dealer's Cards</h2>
+                <div id = "dealer-cards" class = "card-container"></div>
+            </div>
+            <!-- Score display -->
+            <div class = "score-display">
+                <h3 class = "dealer-score" id = "dealer-score">0</h3>
+                <hr class = "line">
+                <h3 class = "player-score" id = "player-score">0</h3>
+            </div>
+            <!-- Player hand display -->
+            <div class = hand>
+                <div id = "player-cards" class = "card-container"></div>
+                <h2 class = "player-title">Player's Cards</h2>
+            </div>
+            <!-- Controls -->
+            <div class = "controls" id = "controls">
+                <button class = "hit-button" id = "hit-button">Hit</button>
+                <button class = "double-down" id = "double-down">Double Down</button>
+                <button class = "stand-button" id = "stand-button">Stand</button>
+            </div>
+            <div class = "money-counters">
+                <div class = "bet-counter">Current Bet: $<span id = "bet-amount-counter"></span></div>
+                <div class = "money-counter">Current Money: $<span id = "player-money-counter"></span></div>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class = "instructions">
+            <h2>How to play:</h2>
+            <p>• Click "Start Game" to begin</p>
+            <p>• "Hit" to get another card</p>
+            <p>• "Stand" to keep your current hand</p>
+            <p>• Get as close to 21 as possible without going over</p>
+            <p>• Beat the dealer to win!</p>
+        </div>
+
+        <script type="module" src="main.js"></script>
+    </body>
+</html>
