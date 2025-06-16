@@ -1,6 +1,8 @@
 Overview:
 This is a web-based Blackjack game implemented with HTML, CSS, and JavaScript. The game features card dealing, betting mechanics, and animations including falling poker chips and a card stream effect.
 
+How to play:
+Run the file "Blackjack.html"
 
 Features:
 
