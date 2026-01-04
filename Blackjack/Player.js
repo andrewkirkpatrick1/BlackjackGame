@@ -10,22 +10,31 @@ export class Player {
         this.hand[1] = deck.dealCard();
     }
 
-    addCard(deck){
-        this.hand.push(deck.dealCard());
+    addCard(card){
+        this.hand.push(card);
     }
 
     valueOfHand(){
         let value = 0;
-        for(let i = 0; i < this.hand.length; i++)
+        for(let i = 0; i < this.hand.length; i++) {
             value += this.hand[i].val;
-        if(this.handContainsAce() && value > 21) value -= 10;
+        }
+        let aces = this.acesInHand();
+        while (aces > 0 && value > 21) {
+            value -= 10;
+            aces--;
+        }
         return value;
     }
 
-    handContainsAce(){
-        for(let i = 0; i < this.hand.length; i++)
-            if(this.hand[i].name == 'Ace') return true;
-        return false;
+    acesInHand(){
+        let aces = 0;
+        for(let i = 0; i < this.hand.length; i++) {
+            if(this.hand[i].name == 'Ace') {
+                aces++;
+            }
+        }
+        return aces;
     }
 
     toString(){

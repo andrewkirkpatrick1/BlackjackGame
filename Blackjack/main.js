@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const doubleDownButton = document.getElementById("double-down");
     const endGameMessage = document.getElementById("end-game-message");
     hitButton.title = "Adds another card to your deck";
-    doubleDownButton.title = "Doubles your intial bet, but only adds one card";
+    doubleDownButton.title = "Doubles your initial bet, but only adds one card";
     standButton.title = "Keeps your current hand, ends your turn for the round";
 
     // Variables
@@ -51,11 +51,11 @@ document.addEventListener('DOMContentLoaded', () => {
     createFallingChipsBackground();
     initializeCardStream();
     startButton.addEventListener("click", showBettingScreen);
-        
+     
     /* Gameplay */
 
     // Starts game
-    function startGame(){
+    async function startGame(){
 
         deck = new Deck();
         deck.shuffle();
@@ -72,28 +72,27 @@ document.addEventListener('DOMContentLoaded', () => {
         endGameMessage.style.display = "none";
         gameActive = true;
 
-        updateUI();
+        await updateHandUI();
 
-        if(player.valueOfHand() === 21 && dealer.valueOfHand() === 21)
-            endGame("Push, it's a tie.", "tie");
-        else if(dealer.valueOfHand() === 21)
-            endGame("Dealer has blackjack, You lose.", "loss");
-        else if(player.valueOfHand() === 21) 
-            endGame("Blackjack! You Win!", "blackjack");
+        await checkBlackjack();
     }
 
     // Game buttons (hit, stand, double down)
     // Hit button
-    hitButton.addEventListener("click", () => {
+    hitButton.addEventListener("click", async () => {
         if(!gameActive) return;
 
-        player.addCard(deck);
         doubleDownButton.style.display = "none";
-        updateUI();
+
+        let newCard = deck.dealCard();
+        player.addCard(newCard);
+
+        await updateHandUI("player");
 
         // Check for bust
-        if(player.valueOfHand() > 21)
+        if(player.valueOfHand() > 21) {
             endGame("Bust! Dealer Wins.", "loss");
+        }
     });
 
     // Stand button
@@ -101,25 +100,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if(!gameActive) return;
 
         gameActive = false;
-        updateUI();
+
+        await revealDealerCardAnimation();
 
         // Dealer draws until hand value >= 17
         while(dealer.valueOfHand() < 17){
-            await delay(1000);
-            dealer.addCard(deck);
-            updateUI();
+            let newCard = deck.dealCard();
+            dealer.addCard(newCard);
+            await updateHandUI("dealer");
         }
 
-        await delay(500);
         // Win loss conditions
-        if(dealer.valueOfHand() > 21)
-            endGame("Dealer Bust! You Win!", "win");
-        else if(player.valueOfHand() > dealer.valueOfHand())
-            endGame("You Win!", "win");
-        else if(player.valueOfHand() < dealer.valueOfHand())
-            endGame("Dealer Wins.", "loss");
-        else 
-            endGame("Push, it's a tie.", "tie")
+        checkWinLossConditions();
     });
 
     // Used in stand function to wait inside while loop
@@ -128,25 +120,77 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Double down button
-    doubleDownButton.addEventListener("click", () => {
+    doubleDownButton.addEventListener("click", async () => {
         player.money -= currentBet;
         currentBet *= 2;
         playerMoneyCounter.textContent = player.money;
         betAmountCounter.textContent = currentBet;
-        hitButton.click();
-        standButton.click();
+
+        // perform the 'hit' part of double-down (only one card)
+        doubleDownButton.style.display = "none";
+        let newCard = deck.dealCard();
+        player.addCard(newCard);
+        await updateHandUI("player");
+
+        // if player busts immediately, finish
+        if(player.valueOfHand() > 21) {
+            endGame("Bust! Dealer Wins.", "loss");
+            return;
+        }
+
+        // perform the 'stand' part: reveal dealer and resolve dealer draws
+        gameActive = false;
+        await revealDealerCardAnimation();
+
+        while(dealer.valueOfHand() < 17){
+            await delay(700);
+            let newDealerCard = deck.dealCard();
+            dealer.addCard(newDealerCard);
+            await updateHandUI("dealer");
+        }
+
+        checkWinLossConditions();
     });
 
+    function checkWinLossConditions() {
+        if(dealer.valueOfHand() > 21)
+            endGame("Dealer Bust! You Win!", "win");
+        else if(player.valueOfHand() > dealer.valueOfHand())
+            endGame("You Win!", "win");
+        else if(player.valueOfHand() < dealer.valueOfHand())
+            endGame("Dealer Wins.", "loss");
+        else 
+            endGame("Push, it's a tie.", "tie")
+    }
+
+    async function checkBlackjack() {
+        if(player.valueOfHand() === 21 && dealer.valueOfHand() === 21) {
+            // reveal dealer's hidden card first, then end as tie
+            await revealDealerCardAnimation();
+            await delay(500);
+            endGame("Push, it's a tie.", "tie");
+        }
+        else if(dealer.valueOfHand() === 21) {
+            // reveal dealer's hidden card first, then show loss
+            await revealDealerCardAnimation();
+            await delay(500);
+            endGame("Dealer has blackjack, You lose.", "loss");
+        }
+        else if(player.valueOfHand() === 21) {
+            endGame("Blackjack! You Win!", "blackjack");
+        }
+    }
+
     // Ends game
-    function endGame(message, outcome){
+    async function endGame(message, outcome){
+        await revealDealerCardAnimation();
         gameActive = false;
+        await updateHandUI();
 
         // Update player's money
         if(outcome === "blackjack") player.money += parseInt(currentBet * 2.5);
         else if(outcome === "win") player.money += parseInt(currentBet * 2);
         else if(outcome === "tie") player.money += parseInt(currentBet);
-
-        updateUI();
 
         setTimeout(() => {
             controls.style.display = "none";
@@ -172,7 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 startButton.style.display = "block";
                 startButton.textContent = "Play Again";
             }
-        }, 500);
+        }, 1000);
     }
 
 
@@ -253,15 +297,20 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Visuals */
 
     // Updates UI
-    function updateUI(){
+    async function updateHandUI(dealCardTarget = null){
+
+        if(dealCardTarget != null) {
+            await moveCardsLeftAnimation(dealCardTarget);
+        }
+
         playerCardsDiv.innerHTML = '';
         dealerCardsDiv.innerHTML = '';
 
         // Display dealer's cards
         dealer.hand.forEach((card, index) => {
-            // Hide dealer's first card until game ends
+            // Hide dealer's first card while game is active
             if(index == 0 && gameActive)
-                dealerCardsDiv.appendChild(drawCard(null, true));
+                dealerCardsDiv.appendChild(drawCard(card, true));
             else
                 dealerCardsDiv.appendChild(drawCard(card));
         });
@@ -284,10 +333,143 @@ document.addEventListener('DOMContentLoaded', () => {
                 dealerScoreSpan.textContent = "?";
             }
         }
-        else {
+        else if (player.valueOfHand() <= 21){
+            // if game is over and player has not bust, show dealer value
             dealerScoreSpan.textContent = dealer.valueOfHand();
         }
 
+        // If card is being delt, do an animation
+        if(dealCardTarget != null) {
+            await dealCardAnimation(dealCardTarget);
+        }
+    }
+
+    function revealDealerCardAnimation() {
+        return new Promise((resolve) => {
+            const hiddenDealerCard = dealerCardsDiv.querySelector('.card.flipped');
+            if(!hiddenDealerCard) return resolve();
+            const inner = hiddenDealerCard.querySelector('.card-inner');
+
+            // if already revealed, just update score and resolve
+            if(!hiddenDealerCard.classList.contains('flipped') || !inner) {
+                dealerScoreSpan.textContent = dealer.valueOfHand();
+                return resolve();
+            }
+
+            // listen for transition end on the inner element
+            let revealed = false;
+            const finishReveal = () => {
+                if(revealed) return;
+                revealed = true;
+                clearTimeout(revealTimeoutId);
+                dealerScoreSpan.textContent = dealer.valueOfHand();
+                resolve();
+            };
+
+            const onTransition = (e) => {
+                if(e.propertyName === 'transform') {
+                    finishReveal();
+                }
+            };
+
+            inner.addEventListener('transitionend', onTransition, { once: true });
+
+            // fallback in case transitionend doesn't fire
+            const revealTimeoutId = setTimeout(finishReveal, 800);
+
+            hiddenDealerCard.classList.remove('flipped');
+        });
+    }
+
+    function moveCardsLeftAnimation(target) {
+        return new Promise((resolve) => {
+            if(target != "player" && target != "dealer") {
+                return resolve();
+            }
+
+            /* Move all cards to left */
+            let cards = [];
+            let numOfCards;
+            if(target === 'player') {
+                cards = playerCardsDiv.querySelectorAll(".card");
+                numOfCards = player.hand.length - 1;
+            }
+            else if (target === 'dealer') {
+                cards = dealerCardsDiv.querySelectorAll(".card");
+                numOfCards = dealer.hand.length - 1;
+            }
+
+            if(numOfCards <= 0) {
+                return resolve();
+            }
+
+            let translateCounter = 0;
+            let resolved = false;
+            const finish = () => {
+                if(resolved) return;
+                resolved = true;
+                clearTimeout(timeoutId);
+                resolve();
+            };
+
+            const onCardDeal = function(e) {
+                if(e.propertyName === 'transform') {
+                    translateCounter++;
+                    if(translateCounter === numOfCards) {
+                        finish();
+                    }
+                }
+            }
+
+            // fallback in case transitions don't fire
+            const timeoutId = setTimeout(finish, 700);
+
+            for(let card of cards) {
+                card.classList.add('moved-left');
+                card.addEventListener('transitionend', onCardDeal, { once: true })
+            }
+        });
+
+    }
+
+    function dealCardAnimation(target) {
+        return new Promise((resolve) => {
+            let handDiv = [];
+            let handLeng;
+            if(target === "player") {
+                handDiv = playerCardsDiv.querySelectorAll(".card-inner");
+                handLeng = player.hand.length - 1;
+            }
+            else if(target === "dealer") {
+                handDiv = dealerCardsDiv.querySelectorAll(".card-inner");
+                handLeng = dealer.hand.length - 1;
+            }
+
+            let cardDiv = handDiv[handLeng];
+            if(!cardDiv) return resolve();
+            cardDiv.classList.add('start-small');
+
+            let resolved = false;
+            const cleanup = () => {
+                if(resolved) return;
+                resolved = true;
+                // temporarily disable transitions so removing the class doesn't trigger a transition
+                const prevTransition = cardDiv.style.transition;
+                cardDiv.style.transition = 'none';
+                cardDiv.classList.remove('start-small');
+                // force reflow to ensure the style change is applied
+                void cardDiv.offsetWidth;
+                // restore the inline transition after a short delay
+                setTimeout(() => { cardDiv.style.transition = prevTransition || ''; }, 50);
+                resolve();
+            };
+
+            const timeoutId = setTimeout(cleanup, 800);
+            cardDiv.addEventListener("animationend", function endAnimation() {
+                clearTimeout(timeoutId);
+                cleanup();
+            }, { once: true });
+        });
     }
 
     // Creates the card visuals
@@ -295,17 +477,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const cardDiv = document.createElement("div");
         cardDiv.className = "card";
 
-        if(isHidden) {
-            cardDiv.title = "Blank Card";
-            cardDiv.innerHTML = `
-            <div class ="blank-card"></div>
-            `;
+        cardDiv.innerHTML = `
+            <div class="card-inner">
+                <div class="card-front">
+                    <div class="card-top"></div>
+                    <div class="card-center"></div>
+                    <div class="card-bottom"></div>
+                </div>
+                <div class="card-back">
+                    <div class="card-back-design"></div>
+                </div>
+            </div>
+        `;
 
-        } else if(card) {
+        if(card) {
             const color = card.getColor();
             cardDiv.classList.add(color);
             cardDiv.title = card.toString();
-            
+
             let suitIcon;
             switch(card.suit){
                 case "Hearts": suitIcon = "♥"; break;
@@ -322,11 +511,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 case "Ace": nameIcon = "A"; break;
             }
 
-            cardDiv.innerHTML = `
-            <div class="card-top">${nameIcon}${suitIcon}</div>
-            <div class="card-center">${suitIcon}</div>
-            <div class="card-bottom">${nameIcon}${suitIcon}</div>
-            `;
+            const topEl = cardDiv.querySelector('.card-top');
+            const centerEl = cardDiv.querySelector('.card-center');
+            const bottomEl = cardDiv.querySelector('.card-bottom');
+            topEl.textContent = `${nameIcon}${suitIcon}`;
+            centerEl.textContent = `${suitIcon}`;
+            bottomEl.textContent = `${nameIcon}${suitIcon}`;
+        }
+
+        if(isHidden) {
+            cardDiv.classList.add('flipped');
+            cardDiv.title = '?';
+        } else {
+            cardDiv.classList.remove('flipped');
         }
 
         return cardDiv;
